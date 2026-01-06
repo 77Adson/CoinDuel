@@ -6,7 +6,7 @@ DATA_FOLDER = 'data'
 
 def get_daily_scenario():
     # Zgodnie z wymaganiami sprintu #1, używamy jednej, sztywnej ścieżki do pliku.
-    hardcoded_file = 'dummy_data.csv'
+    hardcoded_file = 'BTC_1h.csv'
     file_path = os.path.join(DATA_FOLDER, hardcoded_file)
 
     if not os.path.exists(file_path):
@@ -17,7 +17,7 @@ def get_daily_scenario():
 
     # Normalizacja kolumn
     df = df.rename(columns={
-        'Date': 'time',
+        'Datetime': 'time',
         'Open': 'open',
         'High': 'high',
         'Low': 'low',

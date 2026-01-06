@@ -13,6 +13,7 @@ export const GameChart = ({ data = [] }) => {
       layout: {
         background: { type: ColorType.Solid, color: '#1F2937' },
         textColor: '#D1D5DB',
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: '#374151' },
