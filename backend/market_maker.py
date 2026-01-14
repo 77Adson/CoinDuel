@@ -4,8 +4,8 @@ import os
 import random
 from datetime import datetime
 
-DATA_FOLDER = 'data'
-GAME_LENGTH = 200  # ile świeczek trwa jedna gra
+DATA_FOLDER = './data'
+GAME_LENGTH = 300  # ile świeczek trwa jedna gra
 
 def get_daily_scenario():
     # 1. DAILY SEED

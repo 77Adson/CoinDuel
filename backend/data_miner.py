@@ -5,7 +5,7 @@ import os
 ASSETS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'DOGE-USD'] # Co chcemy ściągnąć
 INTERVAL = '1h'   # Świeczki godzinowe (idealne do gry Turbo)
 PERIOD = '2y'     # Ostatnie 2 lata historii
-DATA_FOLDER = 'data'
+DATA_FOLDER = './data'
 
 def download_data():
     if not os.path.exists(DATA_FOLDER):
