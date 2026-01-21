@@ -7,8 +7,16 @@ ASSETS = {
     "ETH": "ETH-USD",
     "SOL": "SOL-USD",
     "XRP": "XRP-USD",
-    "LINK": "LINK-USD"
+    "LINK": "LINK-USD",
+    "LTC": "LTC-USD",
+    "ATOM": "ATOM-USD",
+    "BCH": "BCH-USD",
+    "TRX": "TRX-USD",
+    "EOS": "EOS-USD"
 }
+
+
+
 
 
 INTERVAL = '1h'   # Świeczki godzinowe (idealne do gry Turbo)
