@@ -4,39 +4,105 @@ import { io } from 'socket.io-client';
 
 const BACKEND_URL = "http://localhost:5000";
 
-function App() {
-  const [chartData, setChartData] = useState([]);
-  
-  // Stan dla kwoty transakcji (domyślnie 1000)
-  const [tradeAmount, setTradeAmount] = useState(1000);
+// --- Nowe Komponenty Statystyk ---
 
-  // Stan portfela - odbierany z backendu
-  const [gameState, setGameState] = useState({
-    cash: 10000,
-    btc_amount: 0,
-    portfolio_value: 10000,
-    pnl_percent: 0
-  });
+const PlayerStats = ({ portfolio }) => {
+  if (!portfolio) return null;
+
+  const pnl = portfolio.total_value - 10000;
+  const pnlPercent = (pnl / 10000) * 100;
+
+  return (
+    <div>
+      <h2 className="text-gray-400 uppercase text-xs font-bold mb-2">Twój Portfel</h2>
+      <div className={`text-4xl font-bold mb-1 ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        ${portfolio.total_value?.toFixed(2) || '0.00'}
+      </div>
+      
+      <div className="mt-4 space-y-2 text-sm text-gray-300">
+        <div className="flex justify-between">
+          <span>Dostępne środki:</span>
+          <span className="font-mono text-white">${portfolio.cash?.toFixed(2) || '0.00'}</span>
+        </div>
+        <div className="flex justify-between border-t border-gray-600 pt-2 mt-2">
+          <span>Zysk (PnL):</span>
+          <span className={`font-bold ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {pnl.toFixed(2)}$ ({pnlPercent.toFixed(2)}%)
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CoinStats = ({ portfolio, onTrade }) => {
+  if (!portfolio || !portfolio.coins) return null;
+
+  const ownedCoins = Object.entries(portfolio.coins).filter(([, data]) => data.amount > 0);
+
+  if (ownedCoins.length === 0) {
+    return (
+      <div className="text-center text-gray-500 mt-6">
+        <span>Nie posiadasz jeszcze coinów</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 mt-6">
+      <h3 className="text-gray-400 uppercase text-xs font-bold">Twoje Aktywa</h3>
+      {ownedCoins.map(([coin, data]) => (
+        <div key={coin} className="bg-gray-900/50 p-3 rounded-lg">
+          <div className="flex justify-between items-center mb-2">
+            <span className="font-bold text-yellow-500">{coin}</span>
+            <span className="font-mono text-lg">${data.value.toFixed(2)}</span>
+          </div>
+          <div className="text-xs text-gray-400 space-y-1">
+            <div className="flex justify-between">
+              <span>Ilość:</span>
+              <span>{data.amount.toFixed(6)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Zysk/Strata:</span>
+              <span className={data.pnl_percent >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {data.pnl_percent.toFixed(2)}%
+              </span>
+            </div>
+             {/* Proste przyciski handlu per coin */}
+            <div className="flex gap-2 pt-2">
+                <button onClick={() => onTrade('BUY', coin)} className="w-full text-xs bg-green-600 hover:bg-green-500 py-1 rounded">KUP</button>
+                <button onClick={() => onTrade('SELL', coin)} className="w-full text-xs bg-red-600 hover:bg-red-500 py-1 rounded">SPRZEDAJ</button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+
+function App() {
+  const [chartData, setChartData] = useState({});
+  const [tradeAmount, setTradeAmount] = useState(100);
+
+  // --- NOWY STAN ---
+  const [availableCoins, setAvailableCoins] = useState([]);
+  const [selectedCoins, setSelectedCoins] = useState([]);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [portfolioState, setPortfolioState] = useState(null);
 
   const socketRef = useRef(null);
 
-  // --- FUNKCJA FORMATUJĄCA DANE ---
   const formatCandle = (rawCandle) => {
     if (!rawCandle) return null;
-
     let timeVal = rawCandle.Date || rawCandle.Datetime || rawCandle.time || rawCandle.Time;
-    
     let timeInSeconds = timeVal;
     if (typeof timeVal === 'string') {
       timeInSeconds = new Date(timeVal).getTime() / 1000;
     } else if (typeof timeVal === 'number' && timeVal > 20000000000) {
       timeInSeconds = timeVal / 1000;
     }
-
-    if (!timeInSeconds || isNaN(timeInSeconds)) {
-      return null;
-    }
-
+    if (!timeInSeconds || isNaN(timeInSeconds)) return null;
     return {
       time: timeInSeconds,
       open: parseFloat(rawCandle.Open || rawCandle.open),
@@ -54,41 +120,51 @@ function App() {
       console.log('✅ Połączono z Backendem');
     });
 
+    socket.on('available_coins', (coins) => {
+      console.log('Dostępne coiny:', coins);
+      setAvailableCoins(coins);
+    });
+
     socket.on('history', (data) => {
-      const formattedData = data
+      const { coin, candles } = data;
+      const formattedData = candles
         .map(c => formatCandle(c))
         .filter(c => c !== null)
         .sort((a, b) => a.time - b.time);
 
       if (formattedData.length > 0) {
-        setChartData(formattedData);
+        setChartData(prev => ({ ...prev, [coin]: formattedData }));
       }
     });
 
-    socket.on('candle', (rawCandle) => {
+    socket.on('candle', (data) => {
+      const { coin, candle: rawCandle } = data;
       const newCandle = formatCandle(rawCandle);
       if (!newCandle) return;
 
       setChartData(prevData => {
-        if (prevData.length > 0) {
-          const lastCandle = prevData[prevData.length - 1];
+        const existingData = prevData[coin] || [];
+        if (existingData.length > 0) {
+          const lastCandle = existingData[existingData.length - 1];
           if (newCandle.time === lastCandle.time) {
-             const updated = [...prevData];
+             const updated = [...existingData];
              updated[updated.length - 1] = newCandle;
-             return updated;
+             return { ...prevData, [coin]: updated };
           }
         }
-        return [...prevData, newCandle];
+        return { ...prevData, [coin]: [...existingData, newCandle] };
       });
     });
 
-    socket.on('game_state', (data) => {
-      setGameState(data);
+    // ZMIENIONY EVENT HANDLER
+    socket.on('portfolio_state', (data) => {
+      setPortfolioState(data);
     });
 
-    socket.on('game_over', (data) => {
-      console.log("Game Over:", data);
-      alert(`Koniec gry! Twój wynik: $${data.final_value} (${data.pnl_percent}%)`);
+    socket.on('game_over', () => {
+      console.log("Game Over");
+      alert(`Koniec gry! Końcowy wynik: $${portfolioState?.total_value?.toFixed(2)}`);
+      setGameStarted(false);
     });
 
     return () => {
@@ -96,23 +172,34 @@ function App() {
     };
   }, []);
 
-  // --- FUNKCJA HANDLU ---
-  const handleTrade = (action) => {
-    if (!socketRef.current) return;
+  const handleSelectCoin = (coin) => {
+    setSelectedCoins(prev => 
+      prev.includes(coin) ? prev.filter(c => c !== coin) : [...prev, coin]
+    );
+  };
+  
+  const handleStartGame = () => {
+    if (!socketRef.current || selectedCoins.length === 0) return;
+    socketRef.current.emit('select_coins', { coins: selectedCoins });
+    setGameStarted(true);
+    console.log('Rozpoczynanie gry z:', selectedCoins)
+  };
 
-    // Walidacja kwoty
+  const handleTrade = (action, coin) => {
+    if (!socketRef.current) return;
     const amount = parseFloat(tradeAmount);
     if (isNaN(amount) || amount <= 0) {
         alert("Wpisz poprawną kwotę!");
         return;
     }
-
-    // Wysyłamy event do backendu z wybraną kwotą
     socketRef.current.emit('trade', {
+      coin: coin,
       action: action, 
       amount: amount
     });
   };
+
+  const isConnected = socketRef.current?.connected;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 font-sans">
@@ -122,104 +209,96 @@ function App() {
         </h1>
         <div className="flex gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <span className={`w-3 h-3 rounded-full ${chartData.length > 0 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
-            <span>{chartData.length > 0 ? 'Live Data' : 'Waiting...'}</span>
+            <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} ${isConnected ? 'animate-pulse' : ''}`}></span>
+            <span>{isConnected ? 'Połączono' : 'Brak połączenia'}</span>
           </div>
         </div>
       </header>
 
-      {/* GŁÓWNY GRID: Zmieniony na 4 kolumny (1 lewa, 2 środek, 1 prawa) */}
       <main className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* 1. LEWY PANEL - LISTA COINÓW (Placeholder) */}
-        <div className="lg:col-span-1 bg-gray-800 p-4 rounded-xl border border-gray-700 h-[480px] overflow-hidden flex flex-col">
-            <h3 className="text-gray-400 text-xs font-bold uppercase mb-4 tracking-wider">Dostępne Rynki</h3>
+        {/* 1. LEWY PANEL - WYBÓR COINÓW */}
+        <div className="lg:col-span-1 bg-gray-800 p-4 rounded-xl border border-gray-700 h-fit flex flex-col">
+            <h3 className="text-gray-400 text-xs font-bold uppercase mb-4 tracking-wider">Wybierz Rynki (1-3)</h3>
             
-            {/* Placeholder listy */}
-            <div className="flex-1 flex flex-col items-center justify-center text-gray-600 border-2 border-dashed border-gray-700 rounded-lg bg-gray-900/50">
-                <span className="text-2xl mb-2">🚀</span>
-                <span className="text-sm">Wkrótce...</span>
-                <span className="text-xs opacity-50">(Sprint 3)</span>
-            </div>
-            
-            {/* Przykładowy nieaktywny element listy, żeby było widać jak to będzie wyglądać */}
-            <div className="mt-4 p-3 bg-gray-700/50 rounded flex justify-between items-center opacity-50 cursor-not-allowed">
-                <div className="flex flex-col">
-                    <span className="font-bold text-sm">BTC/USD</span>
-                    <span className="text-xs text-green-400">+2.4%</span>
+            {gameStarted ? (
+                 <div className="text-center text-gray-500 py-8">
+                    <p>Gra w toku...</p>
+                    <p className="text-sm">Aby zagrać ponownie, odśwież stronę.</p>
+                 </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {availableCoins.map(coin => (
+                    <div 
+                      key={coin}
+                      onClick={() => handleSelectCoin(coin)}
+                      className={`p-3 rounded-lg cursor-pointer transition flex justify-between items-center ${selectedCoins.includes(coin) ? 'bg-yellow-500 text-gray-900 font-bold' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    >
+                      <span>{coin}</span>
+                      {selectedCoins.includes(coin) && <span>✓</span>}
+                    </div>
+                  ))}
                 </div>
-                <span className="text-xs bg-yellow-600 px-2 py-1 rounded text-white">Active</span>
-            </div>
+                <button 
+                  onClick={handleStartGame}
+                  disabled={selectedCoins.length === 0 || selectedCoins.length > 3}
+                  className="w-full mt-4 py-3 bg-green-600 text-white font-bold rounded-lg transition active:scale-95 shadow-lg disabled:bg-gray-600 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  Rozpocznij Grę
+                </button>
+              </>
+            )}
         </div>
 
-        {/* 2. ŚRODKOWY PANEL - WYKRES */}
+        {/* 2. ŚRODKOWY PANEL - WYKRESY */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 h-[480px] flex flex-col">
-             <div className="flex-1 w-full relative">
-                {/* Kontener musi mieć flex-1 żeby zajął wysokość rodzica */}
-                <div className="absolute inset-0">
-                    <GameChart data={chartData} />
+            {gameStarted && selectedCoins.length > 0 ? (
+                selectedCoins.map(coin => (
+                    <div key={coin} className="bg-gray-800 p-4 rounded-xl border border-gray-700 h-[480px] flex flex-col">
+                        <h3 className="text-yellow-500 font-bold mb-2">{coin}</h3>
+                        <div className="flex-1 w-full relative">
+                            <div className="absolute inset-0">
+                                <GameChart data={chartData[coin] || []} />
+                            </div>
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <div className="bg-gray-800 p-4 rounded-xl border-2 border-dashed border-gray-700 h-[480px] flex items-center justify-center text-gray-500">
+                    Wybierz coiny i rozpocznij grę, aby zobaczyć wykresy.
                 </div>
-             </div>
-          </div>
+            )}
         </div>
 
-        {/* 3. PRAWY PANEL - HANDEL */}
-        <div className="lg:col-span-1 bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col justify-between h-[480px]">
-          <div>
-            <h2 className="text-gray-400 uppercase text-xs font-bold mb-2">Twój Portfel</h2>
-            <div className={`text-4xl font-bold mb-1 ${gameState.pnl_percent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              ${gameState.portfolio_value.toFixed(2)}
-            </div>
-            
-            <div className="mt-4 space-y-2 text-sm text-gray-300">
-                <div className="flex justify-between">
-                    <span>Dostępne środki:</span>
-                    <span className="font-mono text-white">${gameState.cash.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>Posiadane BTC:</span>
-                    <span className="font-mono text-white">{gameState.btc_amount.toFixed(6)}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-600 pt-2 mt-2">
-                    <span>Zysk (PnL):</span>
-                    <span className={`font-bold ${gameState.pnl_percent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {gameState.pnl_percent.toFixed(2)}%
-                    </span>
-                </div>
-            </div>
-          </div>
+        {/* 3. PRAWY PANEL - HANDEL I STATYSTYKI */}
+        <div className="lg:col-span-1 bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col justify-start h-fit">
+          {gameStarted && portfolioState ? (
+            <>
+              <PlayerStats portfolio={portfolioState} />
 
-          <div className="space-y-4">
-            {/* NOWE POLE TEKSTOWE */}
-            <div>
-                <label className="text-xs text-gray-400 uppercase font-bold mb-1 block">Kwota transakcji ($)</label>
-                <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                    <input 
-                        type="number" 
-                        value={tradeAmount}
-                        onChange={(e) => setTradeAmount(e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-600 rounded-lg py-3 pl-8 pr-4 text-white font-mono focus:outline-none focus:border-yellow-500 transition"
-                    />
-                </div>
-            </div>
+              <div className="my-6 border-t border-gray-700"></div>
 
-            <div className="grid grid-cols-2 gap-3">
-                <button 
-                    onClick={() => handleTrade('BUY')}
-                    className="py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg transition active:scale-95 shadow-lg shadow-green-900/20"
-                >
-                    BUY
-                </button>
-                <button 
-                    onClick={() => handleTrade('SELL')}
-                    className="py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition active:scale-95 shadow-lg shadow-red-900/20"
-                >
-                    SELL
-                </button>
+              <div>
+                  <label className="text-xs text-gray-400 uppercase font-bold mb-1 block">Kwota transakcji ($)</label>
+                  <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                      <input 
+                          type="number" 
+                          value={tradeAmount}
+                          onChange={(e) => setTradeAmount(e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-600 rounded-lg py-3 pl-8 pr-4 text-white font-mono focus:outline-none focus:border-yellow-500 transition"
+                      />
+                  </div>
+              </div>
+
+              <CoinStats portfolio={portfolioState} onTrade={handleTrade} />
+            </>
+          ) : (
+            <div className="text-center text-gray-500 py-16">
+              <p>Statystyki pojawią się po rozpoczęciu gry.</p>
             </div>
-          </div>
+          )}
         </div>
       </main>
 
