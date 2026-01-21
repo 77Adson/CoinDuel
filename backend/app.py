@@ -6,110 +6,119 @@ from market_maker import get_daily_scenario
 app = Flask(__name__)
 CORS(app)
 
-socketio = SocketIO(
-    app,
-    cors_allowed_origins="*",
-    async_mode="threading"
-)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
-# --- KONFIGURACJA GRY ---
+# --- KONFIG ---
 INITIAL_VISIBLE_CANDLES = 50
-GAME_SPEED = 1.0
+GAME_SPEED = 0.5
 STARTING_BALANCE = 10_000
 
-# --- STAN GRY (GLOBALNY - Sprint 2 MVP) ---
-market_data = []
+# --- STAN GRY ---
+market_data = {}        # { "BTC": [...], "ETH": [...], "SOL": [...] }
 current_index = 0
 is_running = False
 
-cash_balance = STARTING_BALANCE     # kasa dostępna
-btc_amount = 0.0                   # ilość BTC (ułamki)
-invested_cash = 0.0                # ile realnie włożyliśmy w BTC
+cash_balance = STARTING_BALANCE
+
+portfolio = {}          # per coin
 
 
-# ---------- FUNKCJA POMOCNICZA ----------
-def emit_game_state(price):
-    btc_value = btc_amount * price
-    portfolio_value = cash_balance + btc_value
+# ---------- HELPERS ----------
 
-    if invested_cash > 0:
-        pnl_percent = ((btc_value - invested_cash) / invested_cash) * 100
-    else:
-        pnl_percent = 0.0
+def init_portfolio(coins):
+    global portfolio
+    portfolio = {
+        coin: {
+            "amount": 0.0,
+            "invested": 0.0
+        } for coin in coins
+    }
 
-    socketio.emit("game_state", {
+
+def emit_full_state(prices):
+    coins_state = {}
+    total_value = cash_balance
+
+    for coin, state in portfolio.items():
+        price = prices[coin]
+        value = state["amount"] * price
+        invested = state["invested"]
+
+        pnl = ((value - invested) / invested * 100) if invested > 0 else 0.0
+        total_value += value
+
+        coins_state[coin] = {
+            "amount": round(state["amount"], 6),
+            "value": round(value, 2),
+            "pnl_percent": round(pnl, 2),
+            "price": price
+        }
+
+    socketio.emit("portfolio_state", {
         "cash": round(cash_balance, 2),
-        "btc_amount": round(btc_amount, 6),
-        "btc_value": round(btc_value, 2),
-        "portfolio_value": round(portfolio_value, 2),
-        "pnl_percent": round(pnl_percent, 2),
-        "price": price
+        "total_value": round(total_value, 2),
+        "coins": coins_state
     })
 
 
-# ---------- SOCKET EVENTS ----------
+# ---------- SOCKETS ----------
 
 @socketio.on("connect")
 def on_connect():
-    global market_data, current_index, is_running
-    global cash_balance, btc_amount, invested_cash
+    global market_data, current_index, is_running, cash_balance
 
     print("Client connected")
 
-    # Reset stanu gracza (Sprint 2 = single player)
     cash_balance = STARTING_BALANCE
-    btc_amount = 0.0
-    invested_cash = 0.0
 
-    # Ładujemy dzisiejszy scenariusz (daily seed)
     if not market_data:
         market_data = get_daily_scenario()
-        if not market_data:
-            print("Błąd: brak danych rynkowych")
-            return
+        coins = list(market_data.keys())
+        init_portfolio(coins)
 
-        print(f"Loaded scenario: {len(market_data)} candles")
         current_index = INITIAL_VISIBLE_CANDLES
+        print(f"Daily coins: {coins}")
 
-    # 1. Historia do wykresu
-    socketio.emit("history", market_data[:INITIAL_VISIBLE_CANDLES])
+    # Historia dla KAŻDEGO coina
+    for coin, candles in market_data.items():
+        socketio.emit("history", {
+            "coin": coin,
+            "candles": candles[:INITIAL_VISIBLE_CANDLES]
+        })
 
-    # 2. Stan gry na start
-    emit_game_state(market_data[current_index - 1]["close"])
+    # Stan początkowy
+    prices = {
+        coin: market_data[coin][current_index - 1]["close"]
+        for coin in market_data
+    }
+    emit_full_state(prices)
 
-    # 3. Start streamu czasu
     if not is_running:
         is_running = True
         socketio.start_background_task(stream_market)
-        print("Market stream started")
 
 
 def stream_market():
     global current_index, is_running
 
     while True:
-        if current_index >= len(market_data):
-            final_price = market_data[-1]["close"]
-            final_value = cash_balance + btc_amount * final_price
-
-            socketio.emit("game_over", {
-                "final_value": round(final_value, 2),
-                "pnl_percent": round(
-                    ((final_value - STARTING_BALANCE) / STARTING_BALANCE) * 100, 2
-                )
-            })
-
+        if current_index >= len(next(iter(market_data.values()))):
+            socketio.emit("game_over")
             is_running = False
-            print("Game over")
             break
 
-        candle = market_data[current_index]
+        prices = {}
 
-        # 1. Nowa świeczka
-        socketio.emit("candle", candle)
+        for coin, candles in market_data.items():
+            candle = candles[current_index]
+            prices[coin] = candle["close"]
 
-        # 2. Aktualizacja portfela
-        emit_game_state(candle["close"])
+            socketio.emit("candle", {
+                "coin": coin,
+                "candle": candle
+            })
+
+        emit_full_state(prices)
 
         current_index += 1
         socketio.sleep(GAME_SPEED)
@@ -117,40 +126,39 @@ def stream_market():
 
 @socketio.on("trade")
 def handle_trade(data):
-    global cash_balance, btc_amount, invested_cash
+    global cash_balance
 
-    action = data.get("action")          # BUY / SELL
-    amount = float(data.get("amount", 0))  # kwota gotówki
+    coin = data.get("coin")
+    action = data.get("action")
+    amount = float(data.get("amount", 0))
 
-    if amount <= 0 or current_index == 0:
+    if coin not in portfolio or amount <= 0:
         return
 
-    price = market_data[current_index - 1]["close"]
+    price = market_data[coin][current_index - 1]["close"]
+    state = portfolio[coin]
 
-    if action == "BUY":
-        if cash_balance >= amount:
-            btc_bought = amount / price
-            cash_balance -= amount
-            btc_amount += btc_bought
-            invested_cash += amount
+    if action == "BUY" and cash_balance >= amount:
+        crypto = amount / price
+        cash_balance -= amount
+        state["amount"] += crypto
+        state["invested"] += amount
 
     elif action == "SELL":
-        btc_to_sell = amount / price
-        if btc_amount >= btc_to_sell and invested_cash > 0:
-            sell_ratio = btc_to_sell / btc_amount
-            invested_cash -= invested_cash * sell_ratio
-
-            btc_amount -= btc_to_sell
+        crypto = amount / price
+        if state["amount"] >= crypto and state["invested"] > 0:
+            ratio = crypto / state["amount"]
+            state["invested"] -= state["invested"] * ratio
+            state["amount"] -= crypto
             cash_balance += amount
 
-    emit_game_state(price)
+    prices = {
+        c: market_data[c][current_index - 1]["close"]
+        for c in market_data
+    }
+    emit_full_state(prices)
 
 
-# ---------- START SERWERA ----------
+# ---------- START ----------
 if __name__ == "__main__":
-    socketio.run(
-        app,
-        port=5000,
-        debug=True,
-        allow_unsafe_werkzeug=True
-    )
+    socketio.run(app, port=5000, debug=True, allow_unsafe_werkzeug=True)
