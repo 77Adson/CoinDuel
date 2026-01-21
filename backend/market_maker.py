@@ -5,22 +5,25 @@ import random
 from datetime import datetime
 
 DATA_FOLDER = "data"
-GAME_LENGTH = 200
+GAME_LENGTH = 250
 
-AVAILABLE_COINS = ["BTC", "ETH", "SOL", "XRP", "LINK"]
 
 def load_all_markets():
-    markets = {}
-
     seed = datetime.now().strftime("%d-%m-%Y")
     random.seed(seed)
 
-    for coin in AVAILABLE_COINS:
-        path = os.path.join(DATA_FOLDER, f"{coin}_1h.csv")
-        if not os.path.exists(path):
+    markets = {}
+
+    for file in os.listdir(DATA_FOLDER):
+        if not file.endswith("_1h.csv"):
             continue
 
+        coin = file.replace("_1h.csv", "")
+        path = os.path.join(DATA_FOLDER, file)
+
         df = pd.read_csv(path)
+        if len(df) < GAME_LENGTH:
+            continue  # KLUCZOWE
 
         df = df.rename(columns={
             "Datetime": "time",
@@ -32,13 +35,8 @@ def load_all_markets():
 
         df["time"] = (
             pd.to_datetime(df["time"], utc=True)
-              .astype("int64") // 10**9
+            .astype("int64") // 10**9
         )
-
-        # 🔒 KLUCZOWA WALIDACJA
-        if len(df) < GAME_LENGTH:
-            print(f"[SKIP] {coin}: za mało danych ({len(df)} świeczek)")
-            continue
 
         max_start = len(df) - GAME_LENGTH
         start = random.randint(0, max_start)
@@ -47,3 +45,4 @@ def load_all_markets():
 
     random.seed()
     return markets
+
