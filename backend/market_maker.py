@@ -1,39 +1,41 @@
-# market_maker.py
 import pandas as pd
 import os
 import random
 from datetime import datetime
 
-DATA_FOLDER = './data'
-GAME_LENGTH = 300  # ile świeczek trwa jedna gra
+DATA_FOLDER = "data"
+GAME_LENGTH = 300
+
+COIN_POOL = ["BTC", "ETH", "SOL", "XRP", "LINK"]
 
 def get_daily_scenario():
-    # 1. DAILY SEED
-    today = datetime.now().strftime('%Y-%m-%d')
-    random.seed(today)
+    seed = datetime.now().strftime("%d-%m-%Y")
+    random.seed(seed)
 
-    file_path = os.path.join(DATA_FOLDER, 'BTC_1h.csv')
-    if not os.path.exists(file_path):
-        return None
+    selected_coins = random.sample(COIN_POOL, 3)
+    scenarios = {}
 
-    df = pd.read_csv(file_path)
+    for coin in selected_coins:
+        path = os.path.join(DATA_FOLDER, f"{coin}_1h.csv")
+        if not os.path.exists(path):
+            continue
 
-    df = df.rename(columns={
-        'Datetime': 'time',
-        'Open': 'open',
-        'High': 'high',
-        'Low': 'low',
-        'Close': 'close'
-    })
+        df = pd.read_csv(path)
 
-    df['time'] = pd.to_datetime(df['time']).astype(int) // 10**9
+        df = df.rename(columns={
+            "Datetime": "time",
+            "Open": "open",
+            "High": "high",
+            "Low": "low",
+            "Close": "close"
+        })
 
-    # 2. LOSUJEMY START (ale deterministycznie)
-    max_start = len(df) - GAME_LENGTH
-    start_index = random.randint(0, max_start)
+        df["time"] = pd.to_datetime(df["time"], utc=True).view("int64") // 10**9
 
-    scenario = df.iloc[start_index:start_index + GAME_LENGTH]
+        max_start = len(df) - GAME_LENGTH
+        start = random.randint(0, max_start)
 
-    random.seed()  # reset
+        scenarios[coin] = df.iloc[start:start + GAME_LENGTH].to_dict("records")
 
-    return scenario.to_dict('records')
+    random.seed()
+    return scenarios
