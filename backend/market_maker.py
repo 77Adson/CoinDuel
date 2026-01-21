@@ -5,23 +5,13 @@ import random
 from datetime import datetime
 
 DATA_FOLDER = "data"
-GAME_LENGTH = 300
+GAME_LENGTH = 200
 
 AVAILABLE_COINS = ["BTC", "ETH", "SOL", "XRP", "LINK"]
 
-
 def load_all_markets():
-    """
-    Ładuje WSZYSTKIE coiny do pamięci (read-only).
-    Zwraca:
-    {
-      "BTC": [...],
-      "ETH": [...]
-    }
-    """
     markets = {}
 
-    # daily seed → tylko start index
     seed = datetime.now().strftime("%d-%m-%Y")
     random.seed(seed)
 
@@ -40,7 +30,15 @@ def load_all_markets():
             "Close": "close"
         })
 
-        df["time"] = pd.to_datetime(df["time"], utc=True).view("int64") // 10**9
+        df["time"] = (
+            pd.to_datetime(df["time"], utc=True)
+              .astype("int64") // 10**9
+        )
+
+        # 🔒 KLUCZOWA WALIDACJA
+        if len(df) < GAME_LENGTH:
+            print(f"[SKIP] {coin}: za mało danych ({len(df)} świeczek)")
+            continue
 
         max_start = len(df) - GAME_LENGTH
         start = random.randint(0, max_start)
