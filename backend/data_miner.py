@@ -2,7 +2,15 @@ import yfinance as yf
 import os
 
 # Konfiguracja
-ASSETS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'DOGE-USD'] # Co chcemy ściągnąć
+ASSETS = {
+    "BTC": "BTC-USD",
+    "ETH": "ETH-USD",
+    "SOL": "SOL-USD",
+    "XRP": "XRP-USD",
+    "LINK": "LINK-USD"
+}
+
+
 INTERVAL = '1h'   # Świeczki godzinowe (idealne do gry Turbo)
 PERIOD = '2y'     # Ostatnie 2 lata historii
 DATA_FOLDER = './data'
