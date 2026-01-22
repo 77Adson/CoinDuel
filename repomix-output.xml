@@ -56,7 +56,10 @@ coinduel-client/README.md
 coinduel-client/src/App.css
 coinduel-client/src/App.jsx
 coinduel-client/src/assets/react.svg
+coinduel-client/src/components/CoinControl.jsx
 coinduel-client/src/components/GameChart.jsx
+coinduel-client/src/components/Header.jsx
+coinduel-client/src/components/StartGamePopup.jsx
 coinduel-client/src/index.css
 coinduel-client/src/main.jsx
 coinduel-client/tailwind.config.js
@@ -66,6 +69,35 @@ README.md
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="coinduel-client/src/components/StartGamePopup.jsx">
+import React from 'react';
+
+const StartGamePopup = ({ onStartGame, availableCoins }) => {
+    const handleStart = () => {
+        onStartGame();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-8 rounded-xl shadow-2xl text-center w-full max-w-md">
+                <h2 className="text-3xl font-bold mb-4 text-yellow-400">Rozpocznij Grę</h2>
+                <p className="text-gray-300 mb-6">Gra rozpocznie się ze wszystkimi dostępnymi rynkami.</p>
+                
+                <button
+                    onClick={handleStart}
+                    disabled={!onStartGame || availableCoins.length === 0}
+                    className="w-full py-3 bg-green-600 text-white font-bold rounded-lg transition-transform transform active:scale-95 shadow-lg disabled:bg-gray-600 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                    Start
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default StartGamePopup;
+</file>
 
 <file path="coinduel-client/.gitignore">
 # Logs
@@ -257,6 +289,123 @@ If you are developing a production application, we recommend using TypeScript wi
 
 <file path="coinduel-client/src/assets/react.svg">
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+</file>
+
+<file path="coinduel-client/src/components/CoinControl.jsx">
+import React, { useState } from 'react';
+
+const CoinControl = ({ coin, onTrade }) => {
+    const [tradeAmount, setTradeAmount] = useState(100);
+
+    const handleTrade = (action) => {
+        if (!coin) return;
+        const amount = parseFloat(tradeAmount);
+        if (isNaN(amount) || amount <= 0) {
+            alert("Wpisz poprawną kwotę!");
+            return;
+        }
+        onTrade(action, coin, amount);
+    };
+
+    if (!coin) {
+        return (
+            <div className="text-center text-gray-500 py-16">
+              <p>Kliknij na wykres, aby handlować.</p>
+            </div>
+          );
+    }
+
+    return (
+        <div>
+            <h3 className="text-xl text-yellow-500 font-bold mb-4">Handel: {coin}</h3>
+            <div>
+                <label className="text-xs text-gray-400 uppercase font-bold mb-1 block">Kwota transakcji ($)</label>
+                <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                    <input 
+                        type="number" 
+                        value={tradeAmount}
+                        onChange={(e) => setTradeAmount(e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-600 rounded-lg py-3 pl-8 pr-4 text-white font-mono focus:outline-none focus:border-yellow-500 transition"
+                    />
+                </div>
+            </div>
+
+            <div className="flex gap-4 mt-4">
+                <button 
+                    onClick={() => handleTrade('BUY')} 
+                    className="w-full py-3 bg-green-600 text-white font-bold rounded-lg transition active:scale-95 shadow-lg"
+                >
+                    KUP
+                </button>
+                <button 
+                    onClick={() => handleTrade('SELL')}
+                    className="w-full py-3 bg-red-600 text-white font-bold rounded-lg transition active:scale-95 shadow-lg"
+                >
+                    SPRZEDAJ
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default CoinControl;
+</file>
+
+<file path="coinduel-client/src/components/Header.jsx">
+import React from 'react';
+
+const PlayerStats = ({ portfolio }) => {
+    if (!portfolio) return null;
+
+    const pnl = portfolio.total_value - 10000;
+    const pnlPercent = (pnl / 10000) * 100;
+
+    return (
+        <div className="flex items-center gap-6">
+            <div>
+                <h2 className="text-gray-400 uppercase text-xs font-bold">Wartość Portfela</h2>
+                <div className={`text-2xl font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    ${portfolio.total_value?.toFixed(2) || '0.00'}
+                </div>
+            </div>
+            <div>
+                <h2 className="text-gray-400 uppercase text-xs font-bold">Dostępne Środki</h2>
+                <div className="text-2xl font-bold text-white">
+                    ${portfolio.cash?.toFixed(2) || '0.00'}
+                </div>
+            </div>
+            <div>
+                <h2 className="text-gray-400 uppercase text-xs font-bold">Zysk/Strata (PnL)</h2>
+                <div className={`text-2xl font-bold ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {pnl.toFixed(2)}$ ({pnlPercent.toFixed(2)}%)
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const Header = ({ isConnected, portfolio }) => {
+    return (
+        <header className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
+            <h1 className="text-2xl font-bold text-yellow-500 tracking-wider">
+                COINDUEL <span className="text-white text-lg font-normal">| Turbo Trader</span>
+            </h1>
+
+            {portfolio && <PlayerStats portfolio={portfolio} />}
+            
+            <div className="flex gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                    <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} ${isConnected ? 'animate-pulse' : ''}`}></span>
+                    <span>{isConnected ? 'Połączono' : 'Brak połączenia'}</span>
+                </div>
+            </div>
+        </header>
+    );
+};
+
+export default Header;
 </file>
 
 <file path="coinduel-client/src/index.css">
@@ -620,8 +769,16 @@ ASSETS = {
     "ETH": "ETH-USD",
     "SOL": "SOL-USD",
     "XRP": "XRP-USD",
-    "LINK": "LINK-USD"
+    "LINK": "LINK-USD",
+    "LTC": "LTC-USD",
+    "ATOM": "ATOM-USD",
+    "BCH": "BCH-USD",
+    "TRX": "TRX-USD",
+    "EOS": "EOS-USD"
 }
+
+
+
 
 
 INTERVAL = '1h'   # Świeczki godzinowe (idealne do gry Turbo)
@@ -667,45 +824,65 @@ if __name__ == "__main__":
     download_data()
 </file>
 
+<file path="backend/requirements.txt">
+beautifulsoup4==4.14.3
+bidict==0.23.1
+blinker==1.9.0
+certifi==2026.1.4
+cffi==2.0.0
+charset-normalizer==3.4.4
+click==8.3.1
+colorama==0.4.6
+curl_cffi==0.13.0
+dnspython==2.8.0
+eventlet==0.40.4
+Flask==3.1.2
+flask-cors==6.0.2
+Flask-SocketIO==5.6.0
+Flask-SQLAlchemy==3.1.1
+frozendict==2.4.7
+greenlet==3.3.0
+h11==0.16.0
+idna==3.11
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+multitasking==0.0.12
+numpy==2.4.0
+pandas==2.3.3
+peewee==3.18.3
+platformdirs==4.5.1
+protobuf==6.33.2
+pycparser==2.23
+python-dateutil==2.9.0.post0
+python-engineio==4.13.0
+python-socketio==5.16.0
+pytz==2025.2
+requests==2.32.5
+simple-websocket==1.1.0
+six==1.17.0
+soupsieve==2.8.1
+SQLAlchemy==2.0.45
+typing_extensions==4.15.0
+tzdata==2025.3
+urllib3==2.6.2
+websockets==15.0.1
+Werkzeug==3.1.4
+wsproto==1.3.2
+yfinance==1.0
+</file>
+
 <file path="coinduel-client/src/App.jsx">
 import { useState, useEffect, useRef } from 'react';
 import { GameChart } from './components/GameChart';
+import Header from './components/Header';
+import CoinControl from './components/CoinControl';
+import StartGamePopup from './components/StartGamePopup';
 import { io } from 'socket.io-client';
 
 const BACKEND_URL = "http://localhost:5000";
 
-// --- Nowe Komponenty Statystyk ---
-
-const PlayerStats = ({ portfolio }) => {
-  if (!portfolio) return null;
-
-  const pnl = portfolio.total_value - 10000;
-  const pnlPercent = (pnl / 10000) * 100;
-
-  return (
-    <div>
-      <h2 className="text-gray-400 uppercase text-xs font-bold mb-2">Twój Portfel</h2>
-      <div className={`text-4xl font-bold mb-1 ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-        ${portfolio.total_value?.toFixed(2) || '0.00'}
-      </div>
-      
-      <div className="mt-4 space-y-2 text-sm text-gray-300">
-        <div className="flex justify-between">
-          <span>Dostępne środki:</span>
-          <span className="font-mono text-white">${portfolio.cash?.toFixed(2) || '0.00'}</span>
-        </div>
-        <div className="flex justify-between border-t border-gray-600 pt-2 mt-2">
-          <span>Zysk (PnL):</span>
-          <span className={`font-bold ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {pnl.toFixed(2)}$ ({pnlPercent.toFixed(2)}%)
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const CoinStats = ({ portfolio, onTrade }) => {
+const CoinStats = ({ portfolio }) => {
   if (!portfolio || !portfolio.coins) return null;
 
   const ownedCoins = Object.entries(portfolio.coins).filter(([, data]) => data.amount > 0);
@@ -738,11 +915,6 @@ const CoinStats = ({ portfolio, onTrade }) => {
                 {data.pnl_percent.toFixed(2)}%
               </span>
             </div>
-             {/* Proste przyciski handlu per coin */}
-            <div className="flex gap-2 pt-2">
-                <button onClick={() => onTrade('BUY', coin)} className="w-full text-xs bg-green-600 hover:bg-green-500 py-1 rounded">KUP</button>
-                <button onClick={() => onTrade('SELL', coin)} className="w-full text-xs bg-red-600 hover:bg-red-500 py-1 rounded">SPRZEDAJ</button>
-            </div>
           </div>
         </div>
       ))}
@@ -753,13 +925,14 @@ const CoinStats = ({ portfolio, onTrade }) => {
 
 function App() {
   const [chartData, setChartData] = useState({});
-  const [tradeAmount, setTradeAmount] = useState(100);
-
-  // --- NOWY STAN ---
+  
   const [availableCoins, setAvailableCoins] = useState([]);
-  const [selectedCoins, setSelectedCoins] = useState([]);
+  const [visibleCoins, setVisibleCoins] = useState([]);
+  const [allCoins, setAllCoins] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
   const [portfolioState, setPortfolioState] = useState(null);
+  const [selectedCoinForStats, setSelectedCoinForStats] = useState(null);
+  const [isStartGamePopupVisible, setIsStartGamePopupVisible] = useState(true);
 
   const socketRef = useRef(null);
 
@@ -826,42 +999,47 @@ function App() {
       });
     });
 
-    // ZMIENIONY EVENT HANDLER
     socket.on('portfolio_state', (data) => {
       setPortfolioState(data);
     });
 
     socket.on('game_over', () => {
       console.log("Game Over");
-      alert(`Koniec gry! Końcowy wynik: $${portfolioState?.total_value?.toFixed(2)}`);
+      alert(`Koniec gry! Końcowy wynik: ${portfolioState?.total_value?.toFixed(2)}`);
       setGameStarted(false);
+      setIsStartGamePopupVisible(true);
+      setPortfolioState(null);
+      setChartData({});
+      setAllCoins([]);
+      setVisibleCoins([]);
     });
 
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [gameStarted, portfolioState?.total_value]);
 
-  const handleSelectCoin = (coin) => {
-    setSelectedCoins(prev => 
+  const handleVisibilityChange = (coin) => {
+    setVisibleCoins(prev => 
       prev.includes(coin) ? prev.filter(c => c !== coin) : [...prev, coin]
     );
   };
   
   const handleStartGame = () => {
-    if (!socketRef.current || selectedCoins.length === 0) return;
-    socketRef.current.emit('select_coins', { coins: selectedCoins });
+    if (!socketRef.current) return;
+    socketRef.current.emit('start_game');
+    setAllCoins(availableCoins);
+    setVisibleCoins(availableCoins);
+    if(availableCoins.length > 0){
+        setSelectedCoinForStats(availableCoins[0]);
+    }
     setGameStarted(true);
-    console.log('Rozpoczynanie gry z:', selectedCoins)
+    setIsStartGamePopupVisible(false);
+    console.log('Rozpoczynanie gry')
   };
 
-  const handleTrade = (action, coin) => {
+  const handleTrade = (action, coin, amount) => {
     if (!socketRef.current) return;
-    const amount = parseFloat(tradeAmount);
-    if (isNaN(amount) || amount <= 0) {
-        alert("Wpisz poprawną kwotę!");
-        return;
-    }
     socketRef.current.emit('trade', {
       coin: coin,
       action: action, 
@@ -871,61 +1049,39 @@ function App() {
 
   const isConnected = socketRef.current?.connected;
 
+  const chartsToShow = gameStarted ? visibleCoins : [];
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 font-sans">
-      <header className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
-        <h1 className="text-2xl font-bold text-yellow-500 tracking-wider">
-          COINDUEL <span className="text-white text-lg font-normal">| Turbo Trader</span>
-        </h1>
-        <div className="flex gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} ${isConnected ? 'animate-pulse' : ''}`}></span>
-            <span>{isConnected ? 'Połączono' : 'Brak połączenia'}</span>
-          </div>
-        </div>
-      </header>
+      <Header isConnected={isConnected} portfolio={portfolioState} />
+
+      {isStartGamePopupVisible && <StartGamePopup onStartGame={handleStartGame} availableCoins={availableCoins} />}
 
       <main className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* 1. LEWY PANEL - WYBÓR COINÓW */}
         <div className="lg:col-span-1 bg-gray-800 p-4 rounded-xl border border-gray-700 h-fit flex flex-col">
-            <h3 className="text-gray-400 text-xs font-bold uppercase mb-4 tracking-wider">Wybierz Rynki (1-3)</h3>
+            <h3 className="text-gray-400 text-xs font-bold uppercase mb-4 tracking-wider">Widoczne Rynki</h3>
             
-            {gameStarted ? (
-                 <div className="text-center text-gray-500 py-8">
-                    <p>Gra w toku...</p>
-                    <p className="text-sm">Aby zagrać ponownie, odśwież stronę.</p>
-                 </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  {availableCoins.map(coin => (
-                    <div 
-                      key={coin}
-                      onClick={() => handleSelectCoin(coin)}
-                      className={`p-3 rounded-lg cursor-pointer transition flex justify-between items-center ${selectedCoins.includes(coin) ? 'bg-yellow-500 text-gray-900 font-bold' : 'bg-gray-700 hover:bg-gray-600'}`}
-                    >
-                      <span>{coin}</span>
-                      {selectedCoins.includes(coin) && <span>✓</span>}
-                    </div>
-                  ))}
-                </div>
-                <button 
-                  onClick={handleStartGame}
-                  disabled={selectedCoins.length === 0 || selectedCoins.length > 3}
-                  className="w-full mt-4 py-3 bg-green-600 text-white font-bold rounded-lg transition active:scale-95 shadow-lg disabled:bg-gray-600 disabled:cursor-not-allowed disabled:shadow-none"
+            <div className="space-y-2">
+                {allCoins.map(coin => (
+                <div 
+                    key={coin}
+                    onClick={() => handleVisibilityChange(coin)}
+                    className={`p-3 rounded-lg cursor-pointer transition flex justify-between items-center ${visibleCoins.includes(coin) ? 'bg-yellow-500 text-gray-900 font-bold' : 'bg-gray-700 hover:bg-gray-600'}`}
                 >
-                  Rozpocznij Grę
-                </button>
-              </>
-            )}
+                    <span>{coin}</span>
+                    {visibleCoins.includes(coin) && <span>✓</span>}
+                </div>
+                ))}
+            </div>
         </div>
 
-        {/* 2. ŚRODKOWY PANEL - WYKRESY */}
         <div className="lg:col-span-2 space-y-4">
-            {gameStarted && selectedCoins.length > 0 ? (
-                selectedCoins.map(coin => (
-                    <div key={coin} className="bg-gray-800 p-4 rounded-xl border border-gray-700 h-[480px] flex flex-col">
+            {gameStarted && chartsToShow.length > 0 ? (
+                chartsToShow.map(coin => (
+                    <div key={coin} 
+                        onClick={() => setSelectedCoinForStats(coin)}
+                        className={`bg-gray-800 p-4 rounded-xl border h-[480px] flex flex-col cursor-pointer transition ${selectedCoinForStats === coin ? 'border-yellow-500' : 'border-gray-700'}`}>
                         <h3 className="text-yellow-500 font-bold mb-2">{coin}</h3>
                         <div className="flex-1 w-full relative">
                             <div className="absolute inset-0">
@@ -936,33 +1092,17 @@ function App() {
                 ))
             ) : (
                 <div className="bg-gray-800 p-4 rounded-xl border-2 border-dashed border-gray-700 h-[480px] flex items-center justify-center text-gray-500">
-                    Wybierz coiny i rozpocznij grę, aby zobaczyć wykresy.
+                    {gameStarted ? "Wybierz widoczne coiny" : "Oczekiwanie na rozpoczęcie gry..."}
                 </div>
             )}
         </div>
 
-        {/* 3. PRAWY PANEL - HANDEL I STATYSTYKI */}
-        <div className="lg:col-span-1 bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col justify-start h-fit">
+        <div className="lg:col-span-1 bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col justify-start h-fit sticky top-6">
           {gameStarted && portfolioState ? (
             <>
-              <PlayerStats portfolio={portfolioState} />
-
+              <CoinControl coin={selectedCoinForStats} onTrade={handleTrade} />
               <div className="my-6 border-t border-gray-700"></div>
-
-              <div>
-                  <label className="text-xs text-gray-400 uppercase font-bold mb-1 block">Kwota transakcji ($)</label>
-                  <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                      <input 
-                          type="number" 
-                          value={tradeAmount}
-                          onChange={(e) => setTradeAmount(e.target.value)}
-                          className="w-full bg-gray-900 border border-gray-600 rounded-lg py-3 pl-8 pr-4 text-white font-mono focus:outline-none focus:border-yellow-500 transition"
-                      />
-                  </div>
-              </div>
-
-              <CoinStats portfolio={portfolioState} onTrade={handleTrade} />
+              <CoinStats portfolio={portfolioState} />
             </>
           ) : (
             <div className="text-center text-gray-500 py-16">
@@ -980,54 +1120,6 @@ function App() {
 }
 
 export default App;
-</file>
-
-<file path="backend/requirements.txt">
-beautifulsoup4==4.14.3
-bidict==0.23.1
-blinker==1.9.0
-certifi==2026.1.4
-cffi==2.0.0
-charset-normalizer==3.4.4
-click==8.3.1
-colorama==0.4.6
-curl_cffi==0.13.0
-dnspython==2.8.0
-eventlet==0.40.4
-Flask==3.1.2
-flask-cors==6.0.2
-Flask-SocketIO==5.6.0
-Flask-SQLAlchemy==3.1.1
-frozendict==2.4.7
-greenlet==3.3.0
-h11==0.16.0
-idna==3.11
-itsdangerous==2.2.0
-Jinja2==3.1.6
-MarkupSafe==3.0.3
-multitasking==0.0.12
-numpy==2.4.0
-pandas==2.3.3
-peewee==3.18.3
-platformdirs==4.5.1
-protobuf==6.33.2
-pycparser==2.23
-python-dateutil==2.9.0.post0
-python-engineio==4.13.0
-python-socketio==5.16.0
-pytz==2025.2
-requests==2.32.5
-simple-websocket==1.1.0
-six==1.17.0
-soupsieve==2.8.1
-SQLAlchemy==2.0.45
-typing_extensions==4.15.0
-tzdata==2025.3
-urllib3==2.6.2
-websockets==15.0.1
-Werkzeug==3.1.4
-wsproto==1.3.2
-yfinance==1.0
 </file>
 
 <file path="backend/app.py">
@@ -1118,35 +1210,75 @@ def on_disconnect():
     print(f"Client disconnected: {sid}")
 
 
-@socketio.on("select_coins")
-def select_coins(data):
+@socketio.on("start_game")
+
+
+def start_game():
+
+
     sid = request.sid
-    coins = data.get("coins", [])
 
-    if len(coins) == 0 or len(coins) > 3:
-        return
 
-    if not all(c in ALL_MARKETS for c in coins):
-        return
+    coins = list(ALL_MARKETS.keys())
+
+
+
+
 
     game = active_games[sid]
+
+
     game["visible_coins"] = coins
 
+
+
+
+
     game["portfolio"] = {
+
+
         c: {"amount": 0.0, "invested": 0.0} for c in coins
+
+
     }
 
+
+
+
+
     # historia tylko dla wybranych
+
+
     for coin in coins:
+
+
         socketio.emit("history", {
+
+
             "coin": coin,
+
+
             "candles": ALL_MARKETS[coin][:INITIAL_VISIBLE_CANDLES]
+
+
         }, to=sid)
+
+
+
+
 
     emit_portfolio_state(sid)
 
+
+
+
+
     if not game["running"]:
+
+
         game["running"] = True
+
+
         socketio.start_background_task(game_loop, sid)
 
 
@@ -1218,22 +1350,25 @@ import random
 from datetime import datetime
 
 DATA_FOLDER = "data"
-GAME_LENGTH = 200
+GAME_LENGTH = 250
 
-AVAILABLE_COINS = ["BTC", "ETH", "SOL", "XRP", "LINK"]
 
 def load_all_markets():
-    markets = {}
-
     seed = datetime.now().strftime("%d-%m-%Y")
     random.seed(seed)
 
-    for coin in AVAILABLE_COINS:
-        path = os.path.join(DATA_FOLDER, f"{coin}_1h.csv")
-        if not os.path.exists(path):
+    markets = {}
+
+    for file in os.listdir(DATA_FOLDER):
+        if not file.endswith("_1h.csv"):
             continue
 
+        coin = file.replace("_1h.csv", "")
+        path = os.path.join(DATA_FOLDER, file)
+
         df = pd.read_csv(path)
+        if len(df) < GAME_LENGTH:
+            continue  # KLUCZOWE
 
         df = df.rename(columns={
             "Datetime": "time",
@@ -1245,13 +1380,8 @@ def load_all_markets():
 
         df["time"] = (
             pd.to_datetime(df["time"], utc=True)
-              .astype("int64") // 10**9
+            .astype("int64") // 10**9
         )
-
-        # 🔒 KLUCZOWA WALIDACJA
-        if len(df) < GAME_LENGTH:
-            print(f"[SKIP] {coin}: za mało danych ({len(df)} świeczek)")
-            continue
 
         max_start = len(df) - GAME_LENGTH
         start = random.randint(0, max_start)

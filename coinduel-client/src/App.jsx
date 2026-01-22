@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { GameChart } from './components/GameChart';
 import Header from './components/Header';
 import CoinControl from './components/CoinControl';
+import StartGamePopup from './components/StartGamePopup';
 import { io } from 'socket.io-client';
 
 const BACKEND_URL = "http://localhost:5000";
@@ -51,10 +52,12 @@ function App() {
   const [chartData, setChartData] = useState({});
   
   const [availableCoins, setAvailableCoins] = useState([]);
-  const [selectedCoins, setSelectedCoins] = useState([]);
+  const [visibleCoins, setVisibleCoins] = useState([]);
+  const [allCoins, setAllCoins] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
   const [portfolioState, setPortfolioState] = useState(null);
   const [selectedCoinForStats, setSelectedCoinForStats] = useState(null);
+  const [isStartGamePopupVisible, setIsStartGamePopupVisible] = useState(true);
 
   const socketRef = useRef(null);
 
@@ -127,8 +130,13 @@ function App() {
 
     socket.on('game_over', () => {
       console.log("Game Over");
-      alert(`Koniec gry! Końcowy wynik: $${portfolioState?.total_value?.toFixed(2)}`);
+      alert(`Koniec gry! Końcowy wynik: ${portfolioState?.total_value?.toFixed(2)}`);
       setGameStarted(false);
+      setIsStartGamePopupVisible(true);
+      setPortfolioState(null);
+      setChartData({});
+      setAllCoins([]);
+      setVisibleCoins([]);
     });
 
     return () => {
@@ -136,20 +144,23 @@ function App() {
     };
   }, []);
 
-  const handleSelectCoin = (coin) => {
-    setSelectedCoins(prev => 
+  const handleVisibilityChange = (coin) => {
+    setVisibleCoins(prev => 
       prev.includes(coin) ? prev.filter(c => c !== coin) : [...prev, coin]
     );
   };
   
   const handleStartGame = () => {
-    if (!socketRef.current || selectedCoins.length === 0) return;
-    socketRef.current.emit('select_coins', { coins: selectedCoins });
-    setGameStarted(true);
-    if(selectedCoins.length > 0){
-        setSelectedCoinForStats(selectedCoins[0]);
+    if (!socketRef.current) return;
+    socketRef.current.emit('start_game');
+    setAllCoins(availableCoins);
+    setVisibleCoins(availableCoins);
+    if(availableCoins.length > 0){
+        setSelectedCoinForStats(availableCoins[0]);
     }
-    console.log('Rozpoczynanie gry z:', selectedCoins)
+    setGameStarted(true);
+    setIsStartGamePopupVisible(false);
+    console.log('Rozpoczynanie gry')
   };
 
   const handleTrade = (action, coin, amount) => {
@@ -163,48 +174,36 @@ function App() {
 
   const isConnected = socketRef.current?.connected;
 
+  const chartsToShow = gameStarted ? visibleCoins : [];
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 font-sans">
       <Header isConnected={isConnected} portfolio={portfolioState} />
 
+      {isStartGamePopupVisible && <StartGamePopup onStartGame={handleStartGame} availableCoins={availableCoins} />}
+
       <main className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
         <div className="lg:col-span-1 bg-gray-800 p-4 rounded-xl border border-gray-700 h-fit flex flex-col">
-            <h3 className="text-gray-400 text-xs font-bold uppercase mb-4 tracking-wider">Wybierz Rynki (1-3)</h3>
+            <h3 className="text-gray-400 text-xs font-bold uppercase mb-4 tracking-wider">Widoczne Rynki</h3>
             
-            {gameStarted ? (
-                 <div className="text-center text-gray-500 py-8">
-                    <p>Gra w toku...</p>
-                    <p className="text-sm">Aby zagrać ponownie, odśwież stronę.</p>
-                 </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  {availableCoins.map(coin => (
-                    <div 
-                      key={coin}
-                      onClick={() => handleSelectCoin(coin)}
-                      className={`p-3 rounded-lg cursor-pointer transition flex justify-between items-center ${selectedCoins.includes(coin) ? 'bg-yellow-500 text-gray-900 font-bold' : 'bg-gray-700 hover:bg-gray-600'}`}
-                    >
-                      <span>{coin}</span>
-                      {selectedCoins.includes(coin) && <span>✓</span>}
-                    </div>
-                  ))}
-                </div>
-                <button 
-                  onClick={handleStartGame}
-                  disabled={selectedCoins.length === 0 || selectedCoins.length > 3}
-                  className="w-full mt-4 py-3 bg-green-600 text-white font-bold rounded-lg transition active:scale-95 shadow-lg disabled:bg-gray-600 disabled:cursor-not-allowed disabled:shadow-none"
+            <div className="space-y-2">
+                {allCoins.map(coin => (
+                <div 
+                    key={coin}
+                    onClick={() => handleVisibilityChange(coin)}
+                    className={`p-3 rounded-lg cursor-pointer transition flex justify-between items-center ${visibleCoins.includes(coin) ? 'bg-yellow-500 text-gray-900 font-bold' : 'bg-gray-700 hover:bg-gray-600'}`}
                 >
-                  Rozpocznij Grę
-                </button>
-              </>
-            )}
+                    <span>{coin}</span>
+                    {visibleCoins.includes(coin) && <span>✓</span>}
+                </div>
+                ))}
+            </div>
         </div>
 
         <div className="lg:col-span-2 space-y-4">
-            {gameStarted && selectedCoins.length > 0 ? (
-                selectedCoins.map(coin => (
+            {gameStarted && chartsToShow.length > 0 ? (
+                chartsToShow.map(coin => (
                     <div key={coin} 
                         onClick={() => setSelectedCoinForStats(coin)}
                         className={`bg-gray-800 p-4 rounded-xl border h-[480px] flex flex-col cursor-pointer transition ${selectedCoinForStats === coin ? 'border-yellow-500' : 'border-gray-700'}`}>
@@ -218,12 +217,12 @@ function App() {
                 ))
             ) : (
                 <div className="bg-gray-800 p-4 rounded-xl border-2 border-dashed border-gray-700 h-[480px] flex items-center justify-center text-gray-500">
-                    Wybierz coiny i rozpocznij grę, aby zobaczyć wykresy.
+                    {gameStarted ? "Wybierz widoczne coiny" : "Oczekiwanie na rozpoczęcie gry..."}
                 </div>
             )}
         </div>
 
-        <div className="lg:col-span-1 bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col justify-start h-fit">
+        <div className="lg:col-span-1 bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col justify-start h-fit sticky top-6">
           {gameStarted && portfolioState ? (
             <>
               <CoinControl coin={selectedCoinForStats} onTrade={handleTrade} />

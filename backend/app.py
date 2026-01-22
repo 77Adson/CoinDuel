@@ -85,20 +85,12 @@ def on_disconnect():
     print(f"Client disconnected: {sid}")
 
 
-@socketio.on("select_coins")
-def select_coins(data):
+@socketio.on("start_game")
+def start_game():
     sid = request.sid
-    coins = data.get("coins", [])
-
-    if len(coins) == 0 or len(coins) > 3:
-        return
-
-    if not all(c in ALL_MARKETS for c in coins):
-        return
-
+    coins = list(ALL_MARKETS.keys())
     game = active_games[sid]
     game["visible_coins"] = coins
-
     game["portfolio"] = {
         c: {"amount": 0.0, "invested": 0.0} for c in coins
     }
@@ -109,7 +101,6 @@ def select_coins(data):
             "coin": coin,
             "candles": ALL_MARKETS[coin][:INITIAL_VISIBLE_CANDLES]
         }, to=sid)
-
     emit_portfolio_state(sid)
 
     if not game["running"]:
@@ -120,10 +111,18 @@ def select_coins(data):
 def game_loop(sid):
     game = active_games[sid]
 
+    if not ALL_MARKETS:
+        print("BŁĄD: Brak załadowanych rynków (ALL_MARKETS is empty)")
+        socketio.emit("error", {"msg": "Server error: No market data available"}, to=sid)
+        return
+
     while game["running"]:
         idx = game["current_index"]
 
-        if idx >= len(next(iter(ALL_MARKETS.values()))):
+        first_coin = list(ALL_MARKETS.keys())[0]
+        max_index = len(ALL_MARKETS[first_coin])
+
+        if idx >= max_index:
             socketio.emit("game_over", to=sid)
             break
 
