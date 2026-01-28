@@ -28,7 +28,7 @@ def create_game():
         "cash": STARTING_BALANCE,
         "coins": [],
         "portfolio": {},
-        "speed": 0.5,
+        "speed": 0.5, 
         "username": None,
         "running": False
     }
@@ -43,20 +43,23 @@ def connect():
 
 @socketio.on("start_game")
 def start_game(data=None):
-    print("Start_Game Data: ", data)
     sid = request.sid
     game = active_games[sid]
 
     if not data:
-        socketio.emit("error", {"msg": "Missing start_game payload"}, to=sid)
-        return
-
+        data = {}
+    
     game["username"] = data.get("username", "anonymous")
-    game["coins"] = data.get("coins", [])[:3]
+    
+    selected_coins = data.get("coins", [])
+    if not selected_coins:
+        selected_coins = list(ALL_MARKETS.keys())[:5]
+
+    game["coins"] = selected_coins
     game["speed"] = float(data.get("speed", 0.5))
 
     if not game["coins"]:
-        socketio.emit("error", {"msg": "No coins selected"}, to=sid)
+        socketio.emit("error", {"msg": "No coins available/selected"}, to=sid)
         return
 
     game["portfolio"] = {
@@ -65,116 +68,182 @@ def start_game(data=None):
     }
 
     for c in game["coins"]:
-        socketio.emit(
-            "history",
-            {
-                "coin": c,
-                "candles": ALL_MARKETS[c][:INITIAL_VISIBLE_CANDLES],
-            },
-            to=sid,
-        )
+        if c in ALL_MARKETS:
+            socketio.emit(
+                "history",
+                {
+                    "coin": c,
+                    "candles": ALL_MARKETS[c][:INITIAL_VISIBLE_CANDLES],
+                },
+                to=sid,
+            )
 
     game["running"] = True
     socketio.start_background_task(game_loop, sid)
 
 
+@socketio.on("update_speed")
+def update_speed(data):
+    sid = request.sid
+    if sid in active_games:
+        try:
+            new_speed = float(data.get("speed", 0.5))
+            new_speed = max(0.1, min(new_speed, 2.0))
+            active_games[sid]["speed"] = new_speed
+        except ValueError:
+            pass
+
+
 def game_loop(sid):
     game = active_games[sid]
+    
+    if not game["coins"] or not ALL_MARKETS:
+        return
+
     first_coin = game["coins"][0]
+    # Zabezpieczenie na wypadek braku klucza w ALL_MARKETS
+    if first_coin not in ALL_MARKETS:
+        return
+
     max_len = len(ALL_MARKETS[first_coin])
 
     while game["running"]:
+        if sid not in active_games:
+            break
+
         idx = game["index"]
         if idx >= max_len:
             finish_game(sid)
             break
 
         for c in game["coins"]:
-            socketio.emit("candle", {
-                "coin": c,
-                "candle": ALL_MARKETS[c][idx]
-            }, to=sid)
+            if c in ALL_MARKETS:
+                socketio.emit("candle", {
+                    "coin": c,
+                    "candle": ALL_MARKETS[c][idx]
+                }, to=sid)
 
         emit_portfolio(sid)
         game["index"] += 1
+        
         socketio.sleep(game["speed"])
 
 
 def emit_portfolio(sid):
     game = active_games[sid]
-    prices = {
-        c: ALL_MARKETS[c][game["index"] - 1]["close"]
-        for c in game["coins"]
-    }
+    idx = game["index"] - 1
+    if idx < 0: idx = 0
+
+    prices = {}
+    for c in game["coins"]:
+        if c in ALL_MARKETS and idx < len(ALL_MARKETS[c]):
+             prices[c] = ALL_MARKETS[c][idx]["close"]
+        else:
+             prices[c] = 0
 
     total = game["cash"]
-    coins = {}
+    coins_data = {}
 
     for c, s in game["portfolio"].items():
-        val = s["amount"] * prices[c]
+        price = prices.get(c, 0)
+        val = s["amount"] * price
         total += val
-        coins[c] = {
+        
+        invested = s["invested"]
+        pnl_percent = 0
+        if invested > 0:
+            pnl_percent = ((val - invested) / invested) * 100
+
+        coins_data[c] = {
             "amount": round(s["amount"], 6),
             "value": round(val, 2),
-            "price": prices[c]
+            "price": price,
+            "pnl_percent": pnl_percent
         }
 
     socketio.emit("portfolio_state", {
         "cash": round(game["cash"], 2),
-        "total": round(total, 2),
-        "coins": coins
+        "total_value": round(total, 2),
+        "coins": coins_data
     }, to=sid)
 
 
 @socketio.on("trade")
 def trade(data):
     sid = request.sid
+    if sid not in active_games: return
     game = active_games[sid]
 
     c = data["coin"]
     amt = float(data["amount"])
-    price = ALL_MARKETS[c][game["index"] - 1]["close"]
+    
+    current_idx = game["index"] - 1
+    if c not in ALL_MARKETS: return
+    price = ALL_MARKETS[c][current_idx]["close"]
+    
     state = game["portfolio"][c]
 
-    if data["action"] == "BUY" and game["cash"] >= amt:
-        crypto = amt / price
-        game["cash"] -= amt
-        state["amount"] += crypto
-        state["invested"] += amt
+    if data["action"] == "BUY":
+        if game["cash"] >= amt:
+            crypto = amt / price
+            game["cash"] -= amt
+            state["amount"] += crypto
+            state["invested"] += amt
+        else:
+            socketio.emit("error", {"msg": "Niewystarczające środki"}, to=sid)
 
-    if data["action"] == "SELL":
-        crypto = amt / price
-        if state["amount"] >= crypto:
-            ratio = crypto / state["amount"]
+    elif data["action"] == "SELL":
+        crypto_to_sell = amt / price
+        if state["amount"] >= crypto_to_sell * 0.999:
+            ratio = crypto_to_sell / state["amount"]
             state["invested"] *= (1 - ratio)
-            state["amount"] -= crypto
+            
+            state["amount"] -= crypto_to_sell
             game["cash"] += amt
+            
+            if state["amount"] < 0.000001:
+                state["amount"] = 0
+                state["invested"] = 0
+        else:
+             socketio.emit("error", {"msg": "Nie masz wystarczająco kryptowaluty"}, to=sid)
 
 
 def finish_game(sid):
+    if sid not in active_games: return
     game = active_games[sid]
-
-    prices = {
-        c: ALL_MARKETS[c][game["index"] - 1]["close"]
-        for c in game["coins"]
-    }
-
+    
+    emit_portfolio(sid)
+    
+    # 1. Obliczamy Total
     total = game["cash"]
+    idx = game["index"] - 1
     for c, s in game["portfolio"].items():
-        total += s["amount"] * prices[c]
+        if c in ALL_MARKETS:
+            # Zabezpieczenie indexu
+            safe_idx = min(idx, len(ALL_MARKETS[c]) - 1)
+            price = ALL_MARKETS[c][safe_idx]["close"]
+            total += s["amount"] * price
+    
+    # 2. POPRAWKA: Używamy app.app_context() do zapisu w bazie
+    try:
+        with app.app_context():  # <--- TO JEST KLUCZOWA ZMIANA
+            score = Score(
+                username=game["username"],
+                score=total,
+                assets=",".join(game["coins"])
+            )
+            db.session.add(score)
+            db.session.commit()
+            print(f"[DB] Zapisano wynik dla {game['username']}: {total}")
+            
+        socketio.emit("game_over", {"total": round(total, 2)}, to=sid)
+    except Exception as e:
+        print(f"Błąd zapisu wyniku: {e}")
+        # Mimo błędu bazy, wysyłamy info do gracza
+        socketio.emit("game_over", {"total": round(total, 2)}, to=sid)
 
-    score = Score(
-        username=game["username"],
-        score=total,
-        assets=",".join(game["coins"])
-    )
+    game["running"] = False
 
-    db.session.add(score)
-    db.session.commit()
-
-    socketio.emit("game_over", {
-        "total": round(total, 2)
-    }, to=sid)
 
 @app.route("/leaderboard", methods=["GET"])
 def leaderboard():
