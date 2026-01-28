@@ -4,7 +4,7 @@ import random
 from datetime import datetime
 
 DATA_FOLDER = "data"
-GAME_LENGTH = 250
+GAME_LENGTH = 950
 
 def load_all_markets():
     seed = datetime.now().strftime("%d-%m-%Y")
