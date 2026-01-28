@@ -1,6 +1,45 @@
 @import "tailwindcss";
 
 body {
-  background-color: #111827; /* Ciemne tło domyślne */
+  background-color: #111827;
   color: white;
+}
+
+/* --- CUSTOM SLIDER STYLES --- */
+.slider-thumb {
+  -webkit-appearance: none; /* Override default CSS styles */
+  appearance: none;
+  width: 100%; /* Full-width */
+  height: 6px; /* Specified height */
+  background: #374151; /* Gray-700 */
+  outline: none; /* Remove outline */
+  border-radius: 9999px;
+  transition: opacity .2s;
+}
+
+/* Mouse-over effects */
+.slider-thumb:hover {
+  opacity: 1; /* Fully shown on mouse-over */
+}
+
+/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+.slider-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none; /* Override default look */
+  appearance: none;
+  width: 20px; /* Set a specific slider handle width */
+  height: 20px; /* Slider handle height */
+  background: #EAB308; /* Yellow-500 */
+  border-radius: 50%; /* CIRCLE */
+  cursor: pointer; /* Cursor on hover */
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); /* Glowing effect */
+}
+
+.slider-thumb::-moz-range-thumb {
+  width: 20px; /* Set a specific slider handle width */
+  height: 20px; /* Slider handle height */
+  background: #EAB308; /* Yellow-500 */
+  border-radius: 50%; /* CIRCLE */
+  cursor: pointer; /* Cursor on hover */
+  border: none;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
 }
