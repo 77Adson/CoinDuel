@@ -1,7 +1,7 @@
 import yfinance as yf
 import os
 
-# Konfiguracja
+# --- KONFIGURACJA ---
 ASSETS = {
     "BTC": "BTC-USD",
     "ETH": "ETH-USD",
@@ -15,48 +15,43 @@ ASSETS = {
     "EOS": "EOS-USD"
 }
 
+INTERVAL = "1h"
+PERIOD = "2y"
+DATA_FOLDER = "./data"
 
-
-
-
-INTERVAL = '1h'   # Świeczki godzinowe (idealne do gry Turbo)
-PERIOD = '2y'     # Ostatnie 2 lata historii
-DATA_FOLDER = './data'
 
 def download_data():
     if not os.path.exists(DATA_FOLDER):
         os.makedirs(DATA_FOLDER)
-        print(f"Utworzono folder: {DATA_FOLDER}")
+        print(f"[INIT] Utworzono folder: {DATA_FOLDER}")
 
-    print(f"Rozpoczynam pobieranie danych ({PERIOD}, interwał: {INTERVAL})...")
+    print(f"[START] Pobieranie danych | okres={PERIOD}, interwał={INTERVAL}\n")
 
-    for symbol in ASSETS:
-        print(f" Pobieranie: {symbol}...")
-        
-        # Magia yfinance - pobieramy historię
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period=PERIOD, interval=INTERVAL)
-        
-        if df.empty:
-            print(f" [!] Błąd: Brak danych dla {symbol}")
-            continue
+    for name, symbol in ASSETS.items():
+        print(f"[FETCH] {name} ({symbol}) ...")
 
-        # Formatowanie danych pod naszą grę
-        # Resetujemy index, żeby Data była kolumną, a nie indeksem
-        df.reset_index(inplace=True)
-        
-        # Wybieramy tylko potrzebne kolumny i zmieniamy nazwy na prostsze
-        # Yahoo zwraca: Datetime, Open, High, Low, Close, Volume...
-        df = df[['Datetime', 'Open', 'High', 'Low', 'Close', 'Volume']]
-        
-        # Zapisujemy do CSV
-        filename = f"{symbol.replace('-USD', '')}_{INTERVAL}.csv"
-        filepath = os.path.join(DATA_FOLDER, filename)
-        
-        df.to_csv(filepath, index=False)
-        print(f" [OK] Zapisano: {filepath} ({len(df)} świeczek)")
+        try:
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period=PERIOD, interval=INTERVAL)
 
-    print("\nGotowe! Twoja baza danych historycznych jest pełna.")
+            if df.empty:
+                print(f"  [!] Brak danych dla {name}")
+                continue
+
+            df.reset_index(inplace=True)
+            df = df[["Datetime", "Open", "High", "Low", "Close", "Volume"]]
+
+            filename = f"{name}_{INTERVAL}.csv"
+            path = os.path.join(DATA_FOLDER, filename)
+            df.to_csv(path, index=False)
+
+            print(f"  [OK] {filename} | świeczek: {len(df)}")
+
+        except Exception as e:
+            print(f"  [ERROR] {name}: {e}")
+
+    print("\n[DONE] Data miner zakończył pobieranie danych.")
+
 
 if __name__ == "__main__":
     download_data()
